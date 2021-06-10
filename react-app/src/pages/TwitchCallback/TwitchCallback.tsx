@@ -1,19 +1,21 @@
 import { Box, CircularProgress, Typography } from "@material-ui/core";
 import axios from "axios";
-import React, { FC, useEffect, useMemo, useState } from "react";
-import { Redirect, useLocation } from "react-router";
+import firebase from "firebase/app";
+import { useSnackbar } from "notistack";
+import React, { FC, useEffect, useMemo } from "react";
+import { Redirect, useHistory, useLocation } from "react-router";
 
 const TwitchCallback: FC = () => {
   // should now be at step #2 of https://dev.twitch.tv/docs/authentication/getting-tokens-oidc/#oidc-authorization-code-flow
-  const [loading, setLoading] = useState(true);
-  const [token, setToken] = useState<string>();
+  const { enqueueSnackbar } = useSnackbar();
+  const { replace } = useHistory();
 
   // parse the code out of the URL
   const { search } = useLocation();
   const code = useMemo(() => {
     const url = new URLSearchParams(search.replace("?", ""));
     return url.get("code");
-  }, []);
+  }, [search]);
 
   useEffect(() => {
     if (code) {
@@ -26,11 +28,23 @@ const TwitchCallback: FC = () => {
       const firebaseAuthUrl = `${process.env.REACT_APP_BASE_API_URL}/authenticateWithTwitch?code=${code}`;
       axios
         .get<string>(firebaseAuthUrl)
-        .then(({ data }) => setToken(data))
-        .catch((err) => console.error(err))
-        .finally(() => setLoading(false));
+        .then(async ({ data: token }) => {
+          await firebase.auth().signInWithCustomToken(token);
+          enqueueSnackbar("Succesfully authenticated with Twich!", {
+            variant: "success",
+          });
+        })
+        .catch((err) => {
+          console.error(err);
+          enqueueSnackbar("Authentication Failed :(", {
+            variant: "error",
+          });
+        })
+        .finally(() => {
+          replace("/");
+        });
     }
-  }, [code]);
+  }, [code, replace, enqueueSnackbar]);
 
   if (!code) return <Redirect to="/" />;
 
@@ -39,18 +53,10 @@ const TwitchCallback: FC = () => {
       <Typography variant="h5">Auth Code from Twitch:</Typography>
       <Typography variant="h6">{code}</Typography>
       <br />
-      {loading && (
-        <>
-          <Typography>...Authenticating with Firebase...</Typography>
-          <CircularProgress />
-        </>
-      )}
-      {token && (
-        <>
-          <Typography>Firebase auth token succesfully retrieved!</Typography>
-          <Typography>{token}</Typography>
-        </>
-      )}
+      <>
+        <Typography>...Authenticating with Firebase...</Typography>
+        <CircularProgress />
+      </>
     </Box>
   );
 };
