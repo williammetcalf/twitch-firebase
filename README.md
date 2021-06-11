@@ -1,6 +1,19 @@
 # Twitch + Firebase Authentication Demo
 
-This project is a minimal demonstration of how to setup Firebase authentication using Twitch.tv as a custom auth provider (although the same concept should work with any standard OAuth2.0 auth provider).
+This project is a minimal demonstration of how to setup Firebase authentication using Twitch.tv as a custom auth provider. It is created using React and Firebase Cloud Functions, but could be done with any set of frontend/backend technologies/tools. You could also easily swap out Twitch for any other Oauth provider.
+
+Firebase comes with a handleful of third-party authenticion options built in, but it also provides a `.signInWithCustomToken()` option which can be paired with `admin.createCustomToken()`. Using these functions, you can easily use any OAuth2 provider you want as for Firebase Authentication.
+
+## Overview
+
+The general flow you can follow to accomplish this is:
+
+- Start the oauth process in your application, get the auth `code`
+- Complete the oauth process server side, and use the access token to obtain the user's unique id
+- Translate the user's unique ID to some sort of Firebase user id (this is arbitrary, it just needs to be unique and repeatable for the user. For Twitch, I'm just doing `twitch:<twitch user id>`)
+- If there is no Firebase user with that ID, create one
+- Generate a custom access token with `admin.createCustomToken(<firebase user id>)`, return the token to the client
+- On the client, do `firebase.auth().signInWithCustomToken(<token>)`
 
 ## Local Setup
 
@@ -113,4 +126,4 @@ Things should almost be working, but there are some google cloud configurations 
 - The request should fail, look at the error message in the network tab, if it says
   - `There is no configuration corresponding to the provided identifier.` > In the firebase console, click "Authentication" > "Get Started" > Try logging in again
   - `IAM Service Account Credentials API has not been used in project xxxx before or it is disabled. Enable it by visiting https://console.developers.google.com/apis/api/iamcredentials.googleapis.com/overview?project=xxxxx then retry. If you enabled this API recently, wait a few minutes for the action to propagate to our systems and retry.;` > Follow the link in the message and enable the api > Wait a few minutes (might take like, 30 minutes even)
-- Yay! you should finally be done and the app should be running
+- Yay! you should finally be done and the app should be running and functional
